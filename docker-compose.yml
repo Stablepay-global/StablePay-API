@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  stablepay-api:
+    build: .
+    container_name: stablepay-api-production
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env.production
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    networks:
+      - stablepay-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: stablepay-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - stablepay-api
+    networks:
+      - stablepay-network
+
+  redis:
+    image: redis:alpine
+    container_name: stablepay-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - stablepay-network
+
+networks:
+  stablepay-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
